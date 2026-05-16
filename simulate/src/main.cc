@@ -591,6 +591,12 @@ void PhysicsThread(mj::Simulate *sim, const char *filename)
     if (d)
     {
       sim->Load(m, d, filename);
+      // If the scene ships a keyframe (e.g. scene_platform.xml's "fixstand"
+      // pose), use it as the initial state so the robot isn't limp during the
+      // controller's boot window.
+      if (m->nkey > 0) {
+        mj_resetDataKeyframe(m, d, 0);
+      }
       mj_forward(m, d);
 
       // allocate ctrlnoise

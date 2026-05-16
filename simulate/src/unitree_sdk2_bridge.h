@@ -278,6 +278,32 @@ public:
         bmsstate->msg_.soc() = 100;
 
         secondary_imustate = std::make_unique<IMUState_t>("rt/secondary_imu");
+
+        // Pre-fill lowcmd with the FixStand pose + a soft holding PD so the
+        // robot doesn't collapse limp during the ~5-8 s boot window between
+        // sim start and the controller's first published lowcmd. The DDS
+        // subscriber's msg_ is overwritten the moment a real message arrives,
+        // so this only affects the bootstrap.
+        static constexpr float kBootKp = 80.0f;
+        static constexpr float kBootKd = 5.0f;
+        static constexpr float kStandQ[29] = {
+            -0.1f, 0.0f, 0.0f, 0.3f, -0.2f, 0.0f,           // left leg
+            -0.1f, 0.0f, 0.0f, 0.3f, -0.2f, 0.0f,           // right leg
+             0.0f, 0.0f, 0.0f,                              // waist
+             0.35f,  0.18f, 0.0f, 0.87f, 0.0f, 0.0f, 0.0f,  // left arm
+             0.35f, -0.18f, 0.0f, 0.87f, 0.0f, 0.0f, 0.0f,  // right arm
+        };
+        std::lock_guard<std::mutex> lock(this->lowcmd->mutex_);
+        const int n = std::min(this->num_motor_, 29);
+        for (int i = 0; i < n; ++i) {
+            auto& mc = this->lowcmd->msg_.motor_cmd()[i];
+            mc.q()  = kStandQ[i];
+            mc.dq() = 0.0f;
+            mc.tau() = 0.0f;
+            mc.kp() = kBootKp;
+            mc.kd() = kBootKd;
+            mc.mode() = 1; // enable
+        }
     }
 
     void run() override

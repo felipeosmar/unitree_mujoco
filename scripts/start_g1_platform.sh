@@ -54,11 +54,16 @@ echo "--- configuring $CFG (backup at $CFG_BAK) ---"
 cp -f "$CFG" "$CFG_BAK"
 # Use [^"]* (not .*) so the regex stops at the closing quote and doesn't swallow
 # the trailing inline comment, which would break YAML parsing.
+# Bump platform_kp so the plate stays level even with an off-balance G1 standing
+# (or briefly collapsing) on top — the default 800 lets the robot's weight tilt
+# it visibly while the FSM is still in Passive.
 sed -i \
     -e 's|^robot: "[^"]*"|robot: "g1"|' \
     -e 's|^robot_scene: "[^"]*"|robot_scene: "scene_platform.xml"|' \
     -e 's|^enable_elastic_band: [0-9]*|enable_elastic_band: 0|' \
     -e 's|^platform_mode: "[^"]*"|platform_mode: "remote"|' \
+    -e 's|^platform_kp: [0-9.]*|platform_kp: 3000.0|' \
+    -e 's|^platform_kd: [0-9.]*|platform_kd: 200.0|' \
     "$CFG"
 grep -E '^(robot|robot_scene|enable_elastic_band|platform_mode):' "$CFG" | sed 's/^/  /'
 
