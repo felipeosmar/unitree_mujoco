@@ -85,6 +85,14 @@ public:
 };
 inline ElasticBand elastic_band;
 
+// Visualization for the elastic band: a small "hook" sphere at the anchor point
+// and a thin cable connecting it to the suspended body. Populated under the sim
+// mutex during the physics step (see PhysicsLoop) and rendered by simulate's UI
+// thread via sim->user_scn.
+inline mjvScene elastic_band_user_scn;
+inline bool elastic_band_user_scn_ready = false;
+inline int elastic_band_body_id = -1;
+
 
 namespace
 {
@@ -500,6 +508,32 @@ namespace
                     d->xfrc_applied[param::config.band_attached_link + 1] = elastic_band.f_[1];
                     d->xfrc_applied[param::config.band_attached_link + 2] = elastic_band.f_[2];
                   }
+
+                  // Update the band visualization (hook sphere + cable capsule)
+                  if (elastic_band_user_scn_ready) {
+                    elastic_band_user_scn.ngeom = 0;
+                    if (elastic_band.enable_ && elastic_band_body_id >= 0) {
+                      const mjtNum anchor[3] = { elastic_band.point_[0],
+                                                 elastic_band.point_[1],
+                                                 elastic_band.point_[2] };
+                      const mjtNum torso[3] = { d->xpos[3*elastic_band_body_id + 0],
+                                                d->xpos[3*elastic_band_body_id + 1],
+                                                d->xpos[3*elastic_band_body_id + 2] };
+                      // 0) hook sphere at the anchor
+                      const mjtNum hook_size[3] = {0.06, 0.06, 0.06};
+                      const float hook_rgba[4] = {0.85f, 0.15f, 0.15f, 1.0f};
+                      mjv_initGeom(&elastic_band_user_scn.geoms[0],
+                                   mjGEOM_SPHERE, hook_size, anchor, nullptr, hook_rgba);
+                      elastic_band_user_scn.ngeom = 1;
+                      // 1) cable capsule between anchor and torso (yellow)
+                      const float cable_rgba[4] = {0.95f, 0.80f, 0.10f, 1.0f};
+                      mjv_initGeom(&elastic_band_user_scn.geoms[1],
+                                   mjGEOM_CAPSULE, nullptr, nullptr, nullptr, cable_rgba);
+                      mjv_connector(&elastic_band_user_scn.geoms[1],
+                                    mjGEOM_CAPSULE, 0.012, anchor, torso);
+                      elastic_band_user_scn.ngeom = 2;
+                    }
+                  }
                 }
 
                 // call mj_step
@@ -554,6 +588,15 @@ void PhysicsThread(mj::Simulate *sim, const char *filename)
       free(ctrlnoise);
       ctrlnoise = static_cast<mjtNum *>(malloc(sizeof(mjtNum) * m->nu));
       mju_zero(ctrlnoise, m->nu);
+
+      // Allocate the user scene used for elastic-band visualization, and hand
+      // it to the simulate UI so it appends our geoms each frame.
+      if (param::config.enable_elastic_band == 1 && !elastic_band_user_scn_ready) {
+        mjv_defaultScene(&elastic_band_user_scn);
+        mjv_makeScene(m, &elastic_band_user_scn, /*maxgeom=*/8);
+        sim->user_scn = &elastic_band_user_scn;
+        elastic_band_user_scn_ready = true;
+      }
     }
     else
     {
@@ -567,6 +610,10 @@ void PhysicsThread(mj::Simulate *sim, const char *filename)
   free(ctrlnoise);
   mj_deleteData(d);
   mj_deleteModel(m);
+  if (elastic_band_user_scn_ready) {
+    mjv_freeScene(&elastic_band_user_scn);
+    elastic_band_user_scn_ready = false;
+  }
 
   exit(0);
 }
@@ -592,6 +639,7 @@ void *UnitreeSdk2BridgeThread(void *arg)
     body_id = mj_name2id(m, mjOBJ_BODY, "base_link");
   }
   param::config.band_attached_link = 6 * body_id;
+  elastic_band_body_id = body_id;
   
   std::unique_ptr<UnitreeSDK2BridgeBase> interface = nullptr;
   if (m->nu > NUM_MOTOR_IDL_GO) {
