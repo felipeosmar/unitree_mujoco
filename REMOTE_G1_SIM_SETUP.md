@@ -238,6 +238,72 @@ rm -f /tmp/.X100-lock /tmp/.X11-unix/X100 \
   `g1_ctrl` FSM (Velocity state) instead — it's the RL-policy equivalent and is
   what would actually run on the robot anyway.
 
+## Tilting platform (phase 2)
+
+The G1 can also be made to stand on a dual-axis tilting platform whose
+pitch and roll are servo-controlled in degrees. Switch the sim to it
+with two config lines:
+
+```yaml
+robot_scene: "scene_platform.xml"
+enable_elastic_band: 0           # platform mode runs without the band
+platform_mode: "remote"          # "off" / "remote" / "boat"
+```
+
+The platform is implemented as two stacked hinge bodies (pitch around X,
+roll around Y) whose torques are written directly to `qfrc_applied` by
+`PlatformController` — no MuJoCo actuators are added, so the G1's
+`m->nu = 29` motor mapping is untouched.
+
+### Modes
+
+| `platform_mode` | Behaviour |
+|---|---|
+| `off` | Hinges free (damped). The platform reacts only to gravity / contacts. |
+| `remote` | PD targets come from `rt/platform_cmd` (a `WirelessController_` where `lx=pitch_deg`, `ly=roll_deg`, `rx=max_rate_deg_s`). Rate-limited per target. |
+| `boat` | Server-side sine-wave generator: <br>`pitch = A_p · sin(2π t / T_p)` <br>`roll  = A_r · sin(2π t / T_r + φ)` — all parameters in `config.yaml` under `platform_boat:`. |
+
+State is published on `rt/platform_state` at ~50 Hz (same IDL, `lx`=actual
+pitch_deg, `ly`=actual roll_deg, `rx`/`ry`=angular velocities deg/s).
+
+### Tools (`tools/platform/`)
+
+- `pulse_platform <pitch_deg> <roll_deg> [rate_deg_s=0] [dur_s=0.5] [iface=lo]`
+  — one-shot publisher for scripts. `rate=0` uses the default from config.
+- `keyboard_platform [-n iface]` — interactive driver: `w/s`/`a/d` bumps
+  pitch/roll by 1° (Shift = 5°), `[`/`]` adjusts rate, space zeros, `r`
+  resets rate to 30 °/s, `q` or Esc quits. Subscribes to
+  `rt/platform_state` and prints actual vs target each 200 ms.
+
+### Example session
+
+```bash
+# Terminal 1 — sim with platform in remote mode
+cd /home/ctrob/work/unitree_mujoco/simulate/build
+DISPLAY=:100 ./unitree_mujoco
+
+# Terminal 2 — drive the platform manually
+/home/ctrob/work/unitree_mujoco/tools/platform/build/keyboard_platform
+
+# Or with a script:
+/home/ctrob/work/unitree_mujoco/tools/platform/build/pulse_platform  10 0 30 2   # nose up 10° in 2s
+/home/ctrob/work/unitree_mujoco/tools/platform/build/pulse_platform   0 8 30 2   # then roll right 8°
+/home/ctrob/work/unitree_mujoco/tools/platform/build/pulse_platform   0 0 60 1   # back to zero, faster
+```
+
+### Tuning notes
+
+- `platform_kp` / `platform_kd` set the platform's PD stiffness. With the
+  G1 standing on top (~35 kg), `kp ≈ 800 Nm/rad`, `kd ≈ 80` holds within
+  a few degrees of the setpoint under normal locomotion. Bump kp to
+  ~3000 if you want a "rigid table that the G1 surfs on".
+- If the G1 is in Passive (FSM not yet engaged), it collapses limp onto
+  the plate and its weight biases the platform off-zero. Always
+  transition to FixStand or Velocity before judging platform tracking.
+- Plate is 2 m × 2 m so the G1 has room to step around. Below z = −1.95
+  there's a catch-all ground plane so a fall doesn't drop the robot
+  into the void.
+
 ## FSM cheat sheet
 
 | Macro | Bits | Trigger DSL (`config/config.yaml`) | Effect |

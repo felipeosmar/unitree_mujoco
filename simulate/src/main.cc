@@ -34,6 +34,7 @@
 #include "array_safety.h"
 #include "unitree_sdk2_bridge.h"
 #include "param.h"
+#include "platform_controller.h"
 
 #define MUJOCO_PLUGIN_DIR "mujoco_plugin"
 #define NUM_MOTOR_IDL_GO 20
@@ -92,6 +93,11 @@ inline ElasticBand elastic_band;
 inline mjvScene elastic_band_user_scn;
 inline bool elastic_band_user_scn_ready = false;
 inline int elastic_band_body_id = -1;
+
+// Optional dual-axis tilting platform controller. Set by the bridge thread once
+// it has m/d; queried by PhysicsLoop on each step. Null when the scene has no
+// platform_pitch/platform_roll joints.
+inline std::unique_ptr<PlatformController> platform_controller;
 
 
 namespace
@@ -536,6 +542,9 @@ namespace
                   }
                 }
 
+                // platform controller (only active if scene has the joints)
+                if (platform_controller) platform_controller->step();
+
                 // call mj_step
                 mj_step(m, d);
                 stepped = true;
@@ -648,7 +657,11 @@ void *UnitreeSdk2BridgeThread(void *arg)
     interface = std::make_unique<Go2Bridge>(m, d);
   }
   interface->start();
-  
+
+  // Optional tilting platform controller — only active if the scene declares
+  // platform_pitch / platform_roll hinge joints.
+  platform_controller.reset(new PlatformController(m, d));
+
   while (true)
   {
     sleep(1);

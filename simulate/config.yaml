@@ -12,3 +12,15 @@ joystick_bits: 16 # Some game controllers may only have 8-bit accuracy
 print_scene_information: 1 # Print link, joint and sensors information of robot
 
 enable_elastic_band: 1 # Virtual spring band — suspends H1/G1 during init so the FSM can transition before gravity wins. MuJoCo-window keys: 9=toggle, 7/UP=raise, 8/DOWN=lower, Backspace=reset
+
+# Tilting platform (only active when the scene has platform_pitch/platform_roll joints, e.g. scene_platform.xml)
+platform_mode: "off"   # "off" | "remote" (drive via rt/platform_cmd) | "boat" (server-side sine wave)
+platform_kp: 800.0     # PD stiffness on platform hinges (Nm/rad)
+platform_kd: 80.0      # PD damping
+platform_default_max_rate_deg_s: 30.0  # default rate limit for "remote" mode (overridable per-cmd)
+platform_boat:
+  pitch_amp_deg: 5.0
+  pitch_period_s: 4.0
+  roll_amp_deg: 7.0
+  roll_period_s: 3.0
+  phase_offset_rad: 1.5707963267948966  # pi/2 — pitch and roll 90° out of phase = circular bobbing
