@@ -29,8 +29,20 @@ cd /home/ctrob/work/unitree_rl_mjlab/deploy/robots/g1/build
 /home/ctrob/work/unitree_mujoco/tools/keyboard_gamepad/build/keyboard_gamepad
 ```
 
-Press `1` to stand (Passive → FixStand), `2` to walk (FixStand → Velocity), then
-use `i / k / j / l` to bump the left stick (forward/back/turn).
+Startup sequence (the elastic band holds the G1 in the air at z=3 so it can't
+fall during init):
+
+1. Sim starts → robot suspended by the elastic band at z≈3 m (legs limp because
+   `g1_ctrl` is still in `Passive`, kp=0).
+2. Terminal 3 — press `1` → FSM transitions to `FixStand`, robot adopts the
+   stand pose while still suspended.
+3. Click into the **MuJoCo window** (inside Xpra) and hold the `down arrow` (or
+   `8`) to lengthen the spring so the robot lowers gradually toward the floor.
+4. When the feet touch, press `9` to release the band entirely. The FixStand PD
+   (kp≈100–200 on legs) holds the stand pose.
+5. Press `2` in Terminal 3 → `Velocity` (RL walking policy).
+6. Bump the left stick with `i / k / j / l` (forward/back/strafe) and the right
+   stick with `u / o` (yaw).
 
 Non-interactive equivalent (drives FSM from a shell script):
 
@@ -96,7 +108,8 @@ class added to the bridge that receives `WirelessController_` over DDS.
 2. **`simulate/src/unitree_sdk2_bridge.h`** — adds a `joystick_type: "dds"`
    branch; skips the bridge's own `rt/wirelesscontroller` publish to avoid a
    feedback loop with the external publisher.
-3. **`simulate/config.yaml`** — switched to G1:
+3. **`simulate/config.yaml`** — switched to G1 with the elastic band on by
+   default so the robot is suspended during init:
    ```yaml
    robot: "g1"
    robot_scene: "scene_29dof.xml"
@@ -104,6 +117,7 @@ class added to the bridge that receives `WirelessController_` over DDS.
    interface: "lo"
    use_joystick: 1
    joystick_type: "dds"
+   enable_elastic_band: 1
    ```
 
 ### New tools
