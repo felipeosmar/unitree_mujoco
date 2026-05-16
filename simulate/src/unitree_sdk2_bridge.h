@@ -13,6 +13,7 @@
 
 #include "param.h"
 #include "physics_joystick.h"
+#include "dds_joystick.h"
 
 #define MOTOR_SENSOR_NUM 3
 
@@ -31,6 +32,9 @@ public:
                 joystick = std::make_shared<XBoxJoystick>(param::config.joystick_device, param::config.joystick_bits);
             } else if(param::config.joystick_type == "switch") {
                 joystick  = std::make_shared<SwitchJoystick>(param::config.joystick_device, param::config.joystick_bits);
+            } else if(param::config.joystick_type == "dds") {
+                joystick = std::make_shared<DDSJoystick>();
+                joystick_is_dds_ = true;
             } else {
                 std::cerr << "Unsupported joystick type: " << param::config.joystick_type << std::endl;
                 exit(EXIT_FAILURE);
@@ -89,6 +93,7 @@ protected:
     int secondary_imu_acc_adr_ = -1;
 
     std::shared_ptr<unitree::common::UnitreeJoystick> joystick = nullptr;
+    bool joystick_is_dds_ = false; // true when joystick state arrives via DDS (no re-publish to avoid feedback)
 
     void _check_sensor()
     {
@@ -239,8 +244,8 @@ public:
             }
             highstate->unlockAndPublish();
         }
-        // wireless_controller
-        if(wireless_controller->joystick) {
+        // wireless_controller — skip when joystick state came from DDS to avoid feedback loop
+        if(wireless_controller->joystick && !joystick_is_dds_) {
             wireless_controller->unlockAndPublish();
         }
     }
