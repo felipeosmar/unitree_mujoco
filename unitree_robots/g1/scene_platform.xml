@@ -35,7 +35,10 @@
         <!-- The plate the robot stands on. Thick enough (10 cm) that the G1's
              visual foot mesh (which extends ~5 cm below the ankle_roll_link
              origin while the actual collision spheres sit at -3 cm) is
-             contained inside the plate instead of poking out the bottom. -->
+             contained inside the plate instead of poking out the bottom.
+             solref/solimp tuned for tight, near-rigid contact so the small
+             5 mm foot spheres don't squish into the plate when it tilts
+             quickly under load. -->
         <geom name="platform_top" type="box" size="1.0 1.0 0.05" material="platform_top"
               friction="1.2 0.05 0.001" density="200"/>
         <!-- Visual rim to make the plate easier to read at a glance. -->

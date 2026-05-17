@@ -15,12 +15,12 @@ enable_elastic_band: 1 # Virtual spring band — suspends H1/G1 during init so t
 
 # Tilting platform (only active when the scene has platform_pitch/platform_roll joints, e.g. scene_platform.xml)
 platform_mode: "off"   # "off" | "remote" (drive via rt/platform_cmd) | "boat" (server-side sine wave)
-platform_kp: 800.0     # PD stiffness on platform hinges (Nm/rad)
-platform_kd: 80.0      # PD damping
+platform_kp: 800.0     # PD stiffness on platform hinges (Nm/rad). The convenience script bumps this to 3000.
+platform_kd: 400.0     # PD damping — set to ~critical (kd = 2·√(kp·I), I≈50 kg·m² for plate+G1)
 platform_default_max_rate_deg_s: 30.0  # default rate limit for "remote" mode (overridable per-cmd)
 platform_boat:
-  pitch_amp_deg: 5.0
-  pitch_period_s: 4.0
-  roll_amp_deg: 7.0
-  roll_period_s: 3.0
+  pitch_amp_deg: 3.0     # gentler than the old 5° default — boat now rocks calmly
+  pitch_period_s: 6.0    # slower than the old 4 s
+  roll_amp_deg: 4.0      # gentler than the old 7°
+  roll_period_s: 8.0     # slower than the old 3 s
   phase_offset_rad: 1.5707963267948966  # pi/2 — pitch and roll 90° out of phase = circular bobbing

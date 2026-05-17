@@ -63,7 +63,7 @@ sed -i \
     -e 's|^enable_elastic_band: [0-9]*|enable_elastic_band: 0|' \
     -e 's|^platform_mode: "[^"]*"|platform_mode: "remote"|' \
     -e 's|^platform_kp: [0-9.]*|platform_kp: 3000.0|' \
-    -e 's|^platform_kd: [0-9.]*|platform_kd: 200.0|' \
+    -e 's|^platform_kd: [0-9.]*|platform_kd: 800.0|' \
     "$CFG"
 grep -E '^(robot|robot_scene|enable_elastic_band|platform_mode):' "$CFG" | sed 's/^/  /'
 
