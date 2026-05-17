@@ -12,15 +12,17 @@ joystick_bits: 16 # Some game controllers may only have 8-bit accuracy
 print_scene_information: 1 # Print link, joint and sensors information of robot
 
 enable_elastic_band: 1 # Virtual spring band — suspends H1/G1 during init so the FSM can transition before gravity wins. MuJoCo-window keys: 9=toggle, 7/UP=raise, 8/DOWN=lower, Backspace=reset
+elastic_band_initial_length: 2.2 # rest length (m). With anchor at z=3, length 2.2 means the (now rope-like) band is slack while torso is at z≈0.8 (standing) and only catches if the torso drops below.
 
-# Tilting platform (only active when the scene has platform_pitch/platform_roll joints, e.g. scene_platform.xml)
+# Tilting platform (only active when the scene has the 'platform' mocap body, e.g. scene_platform.xml)
 platform_mode: "off"   # "off" | "remote" (drive via rt/platform_cmd) | "boat" (server-side sine wave)
-platform_kp: 800.0     # PD stiffness on platform hinges (Nm/rad). The convenience script bumps this to 3000.
-platform_kd: 400.0     # PD damping — set to ~critical (kd = 2·√(kp·I), I≈50 kg·m² for plate+G1)
-platform_default_max_rate_deg_s: 30.0  # default rate limit for "remote" mode (overridable per-cmd)
+platform_kp: 800.0     # (legacy field — kept for back-compat; ignored by the new mocap platform)
+platform_kd: 400.0     # (legacy field — kept for back-compat; ignored by the new mocap platform)
+platform_default_max_rate_deg_s: 30.0  # rate-limit for the platform setpoint (deg/s), applies in remote and boat modes
 platform_boat:
-  pitch_amp_deg: 3.0     # gentler than the old 5° default — boat now rocks calmly
-  pitch_period_s: 6.0    # slower than the old 4 s
-  roll_amp_deg: 4.0      # gentler than the old 7°
-  roll_period_s: 8.0     # slower than the old 3 s
+  pitch_amp_deg: 3.0     # peak pitch in degrees
+  pitch_period_s: 6.0    # full sine period in seconds
+  roll_amp_deg: 4.0      # peak roll in degrees
+  roll_period_s: 8.0     # full sine period in seconds
   phase_offset_rad: 1.5707963267948966  # pi/2 — pitch and roll 90° out of phase = circular bobbing
+  rampup_s: 30.0         # amplitudes scale 0→1 linearly over this window (0 = no rampup, instant full amp)

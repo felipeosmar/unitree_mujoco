@@ -23,40 +23,32 @@
     <!-- Catch-all ground (well below the platform, so the robot can fall off safely). -->
     <geom name="floor" pos="0 0 -2" size="0 0 0.05" type="plane" material="groundplane"/>
 
-    <!-- Dual-axis tilting platform centered at the origin.
-         Plate top surface ends at z=0 so the existing G1 keyframe (pelvis z=0.793)
-         drops onto it without modifying the robot XML. -->
-    <body name="platform_pitch_body" pos="0 0 -0.05">
-      <joint name="platform_pitch" type="hinge" axis="1 0 0" pos="0 0 0" damping="20" limited="false"/>
-      <inertial pos="0 0 0" mass="0.5" diaginertia="0.05 0.05 0.05"/>
-      <body name="platform_roll_body" pos="0 0 0">
-        <joint name="platform_roll" type="hinge" axis="0 1 0" pos="0 0 0" damping="20" limited="false"/>
-        <inertial pos="0 0 0" mass="0.5" diaginertia="0.05 0.05 0.05"/>
-        <!-- The plate the robot stands on. Thick enough (10 cm) that the G1's
-             visual foot mesh (which extends ~5 cm below the ankle_roll_link
-             origin while the actual collision spheres sit at -3 cm) is
-             contained inside the plate instead of poking out the bottom.
-             solref/solimp tuned for tight, near-rigid contact so the small
-             5 mm foot spheres don't squish into the plate when it tilts
-             quickly under load. -->
-        <geom name="platform_top" type="box" size="1.0 1.0 0.05" material="platform_top"
-              friction="1.2 0.05 0.001" density="200"/>
-        <!-- Visual rim to make the plate easier to read at a glance. -->
-        <geom name="platform_rim_n" type="box" pos="0  1.0 0.05" size="1.0 0.01 0.02" material="platform_side" contype="0" conaffinity="0"/>
-        <geom name="platform_rim_s" type="box" pos="0 -1.0 0.05" size="1.0 0.01 0.02" material="platform_side" contype="0" conaffinity="0"/>
-        <geom name="platform_rim_e" type="box" pos=" 1.0 0 0.05" size="0.01 1.0 0.02" material="platform_side" contype="0" conaffinity="0"/>
-        <geom name="platform_rim_w" type="box" pos="-1.0 0 0.05" size="0.01 1.0 0.02" material="platform_side" contype="0" conaffinity="0"/>
-      </body>
+    <!-- Tilting platform as a MOCAP body — its world position/orientation is
+         set directly each step by PlatformController via data->mocap_pos /
+         mocap_quat. Mocap bodies don't participate in dynamics, so the boat
+         motion is exactly what we command, independent of the robot's weight
+         or movement on top. Contacts with the robot work normally.
+         The plate's top surface is at z=0 in the body frame so the G1 keyframe
+         (pelvis z=0.793) lands on it. -->
+    <body name="platform" mocap="true" pos="0 0 -0.05">
+      <!-- 10 cm thick plate so the G1's foot mesh (which extends ~5 cm below
+           the ankle_roll_link origin while the actual collision spheres are
+           at -3 cm) is visually contained inside the plate. -->
+      <geom name="platform_top" type="box" size="1.0 1.0 0.05" material="platform_top"
+            friction="1.2 0.05 0.001"/>
+      <!-- Visual rims (no collision) so the edges of the plate are easy to read. -->
+      <geom name="platform_rim_n" type="box" pos="0  1.0 0.05" size="1.0 0.01 0.02" material="platform_side" contype="0" conaffinity="0"/>
+      <geom name="platform_rim_s" type="box" pos="0 -1.0 0.05" size="1.0 0.01 0.02" material="platform_side" contype="0" conaffinity="0"/>
+      <geom name="platform_rim_e" type="box" pos=" 1.0 0 0.05" size="0.01 1.0 0.02" material="platform_side" contype="0" conaffinity="0"/>
+      <geom name="platform_rim_w" type="box" pos="-1.0 0 0.05" size="0.01 1.0 0.02" material="platform_side" contype="0" conaffinity="0"/>
     </body>
   </worldbody>
 
   <!-- Initial pose: the G1 is pre-placed in the FixStand joint configuration
        (same target qs that the controller commands), so during the controller's
        ~5 s boot the robot doesn't collapse limp onto the plate before FixStand
-       engages. Order: 7 free-joint qpos (xyz + quat wxyz) + 29 G1 motor joints
-       (left leg 6, right leg 6, waist 3, left arm 7, right arm 7) + 2 platform
-       hinges (pitch, roll). MuJoCo will apply this via mj_resetDataKeyframe at
-       startup; see main.cc. -->
+       engages. With the platform now mocap, qpos has only 7 free-joint slots
+       + 29 G1 motor joints = 36 entries (no more 2 platform hinges). -->
   <keyframe>
     <key name="fixstand"
          qpos="0 0 0.793  1 0 0 0
@@ -64,16 +56,6 @@
                -0.1 0 0 0.3 -0.2 0
                0 0 0
                0.35  0.18 0 0.87 0 0 0
-               0.35 -0.18 0 0.87 0 0 0
-               0 0"/>
+               0.35 -0.18 0 0.87 0 0 0"/>
   </keyframe>
-
-  <!-- State sensors for the platform — joint angle and rate, used by PlatformController
-       to feed back actual state on rt/platform_state. -->
-  <sensor>
-    <jointpos name="platform_pitch_pos" joint="platform_pitch"/>
-    <jointpos name="platform_roll_pos"  joint="platform_roll"/>
-    <jointvel name="platform_pitch_vel" joint="platform_pitch"/>
-    <jointvel name="platform_roll_vel"  joint="platform_roll"/>
-  </sensor>
 </mujoco>

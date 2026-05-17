@@ -25,6 +25,7 @@ inline struct SimulationConfig
 
     int enable_elastic_band;
     int band_attached_link = 0;
+    double elastic_band_initial_length = 0.0; // m; non-zero = rope acts as a safety harness rather than yanking the torso to the anchor
 
     // Tilting platform — only active when the scene declares "platform_pitch" /
     // "platform_roll" joints. platform_mode: "off" (no control), "remote" (drive
@@ -38,6 +39,7 @@ inline struct SimulationConfig
     double boat_roll_amp_deg = 7.0;
     double boat_roll_period_s = 3.0;
     double boat_phase_offset_rad = 1.5707963267948966; // pi/2
+    double boat_rampup_s = 30.0; // amplitudes scale 0→1 linearly over this window
 
     void load_from_yaml(const std::string &filename)
     {
@@ -54,6 +56,8 @@ inline struct SimulationConfig
             joystick_bits = cfg["joystick_bits"].as<int>();
             print_scene_information = cfg["print_scene_information"].as<int>();
             enable_elastic_band = cfg["enable_elastic_band"].as<int>();
+            if (cfg["elastic_band_initial_length"])
+                elastic_band_initial_length = cfg["elastic_band_initial_length"].as<double>();
             if (cfg["platform_mode"]) platform_mode = cfg["platform_mode"].as<std::string>();
             if (cfg["platform_kp"]) platform_kp = cfg["platform_kp"].as<double>();
             if (cfg["platform_kd"]) platform_kd = cfg["platform_kd"].as<double>();
@@ -65,6 +69,7 @@ inline struct SimulationConfig
                 if (b["roll_amp_deg"]) boat_roll_amp_deg = b["roll_amp_deg"].as<double>();
                 if (b["roll_period_s"]) boat_roll_period_s = b["roll_period_s"].as<double>();
                 if (b["phase_offset_rad"]) boat_phase_offset_rad = b["phase_offset_rad"].as<double>();
+                if (b["rampup_s"]) boat_rampup_s = b["rampup_s"].as<double>();
             }
         }
         catch(const std::exception& e)

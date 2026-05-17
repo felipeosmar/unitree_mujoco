@@ -71,9 +71,16 @@ public:
 
     double v = dx[0] * direction[0] + dx[1] * direction[1] + dx[2] * direction[2];
 
-    f_[0] = (stiffness_ * (distance - length_) - damping_ * v) * direction[0];
-    f_[1] = (stiffness_ * (distance - length_) - damping_ * v) * direction[1];
-    f_[2] = (stiffness_ * (distance - length_) - damping_ * v) * direction[2];
+    // Rope-like: only pulls when stretched beyond rest length. A real elastic
+    // band/rope can't push, so we clamp the stretch to >= 0. This lets us use
+    // a long rest length as a "safety harness" — the band is dormant while the
+    // robot is at its standing height and only catches if it drops below.
+    double stretch = distance - length_;
+    if (stretch < 0) stretch = 0;
+    const double damp = stretch > 0 ? (damping_ * v) : 0;
+    f_[0] = (stiffness_ * stretch - damp) * direction[0];
+    f_[1] = (stiffness_ * stretch - damp) * direction[1];
+    f_[2] = (stiffness_ * stretch - damp) * direction[2];
   }
 
 
@@ -655,6 +662,9 @@ void *UnitreeSdk2BridgeThread(void *arg)
   }
   param::config.band_attached_link = 6 * body_id;
   elastic_band_body_id = body_id;
+  if (param::config.elastic_band_initial_length > 0) {
+    elastic_band.length_ = param::config.elastic_band_initial_length;
+  }
   
   std::unique_ptr<UnitreeSDK2BridgeBase> interface = nullptr;
   if (m->nu > NUM_MOTOR_IDL_GO) {
